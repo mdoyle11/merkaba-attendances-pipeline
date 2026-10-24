@@ -30,14 +30,15 @@ class SheetsClient:
         if sheet_name not in self.WRITE_SHEETS:
             raise PermissionError(f"Protected tab: Cannot overwrite StudioBookings sheet: {sheet_name}.")
         tab = self.spreadsheet.worksheet(sheet_name)
+        df = df.fillna("")
         data_matrix = [df.columns.values.tolist()] + df.values.tolist()
         try:
             tab.clear()
             tab.update(range_name="A1", values=data_matrix)
+            print(f"Successfully updated sheet: {sheet_name}")
         except Exception as e:
             print(f"Failed to update sheet: {e}")
 
-        print(f"Successfully updated sheet: {sheet_name}")
 
 if __name__ == "__main__":
     from src.clients.teamup import TeamUpClient

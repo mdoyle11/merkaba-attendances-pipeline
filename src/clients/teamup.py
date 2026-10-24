@@ -1,5 +1,5 @@
 import httpx
-from config import Config
+from src.config import Config
 
 class TeamUpClient:
     def __init__(self, m2m_token: str = None):
@@ -13,8 +13,10 @@ class TeamUpClient:
     def get_attendances(self):
         next_url = self.url
         params = [
-            ("columns", "customer")
+            ("columns", "customer"),
+            ("attendance_status[]", "attended")
         ]
+        attendances = []
 
         with httpx.Client() as client:
             while next_url:
@@ -29,12 +31,11 @@ class TeamUpClient:
                 response.raise_for_status()
 
                 data = response.json()
-                print(data)
+                # print(data)
                 rows = data.get("rows", [])
                 if not rows:
                     break
                 
-                attendances = []
                 for row in rows:
                     customer_obj = row.get("customer", {})
                     id = customer_obj.get("id") or row.get("customer.id") or "ID Not Found"
@@ -42,7 +43,12 @@ class TeamUpClient:
                     email = customer_obj.get("email") or row.get("customer.email") or "No Email Associated"
                     count = row.get("count", 0)
 
-                    attendances.append({"id": id, "name": name, "email": email, "count": count})
+                    attendances.append({"ID": id, "Customer": name, "Email": email, "Attendances": count})
 
                 next_url = data.get("next")
         return attendances
+
+if __name__ == "__main__":
+     client = TeamUpClient()
+     attendances = client.get_attendances()
+     print(attendances)
