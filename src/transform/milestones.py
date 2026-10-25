@@ -1,8 +1,9 @@
 # src/transformers/attendance.py
 import pandas as pd
+from src.config import Config
 from src.transform.leaderboard import normalize_id
 
-DEFAULT_MILESTONES = [25, 50, 75, 100, 150, 200, 250, 500]
+DEFAULT_MILESTONES = Config.MILESTONES
 
 
 def check_milestone_crossings(

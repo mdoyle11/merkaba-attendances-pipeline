@@ -1,4 +1,5 @@
 import os
+import json
 import gspread
 import pandas as pd
 from src.config import Config
@@ -9,11 +10,17 @@ class SheetsClient:
 
     def __init__(self, worksheet_id: str = None):
         self.sheet_id = worksheet_id or Config.SHEET_ID
+        creds_json = os.getenv("GSPREAD_CREDENTIALS_JSON")
 
-        if os.path.exists("secrets/credentials.json"):
-            self.gc = gspread.service_account(filename="secrets/credentials.json")
+        if creds_json:
+            # Load directly from environment variable string
+            creds_dict = json.loads(creds_json)
+            self.gc = gspread.service_account_from_dict(creds_dict)
         else:
-            self.gc = gspread.service_account_auto()
+            # Fall back to default local JSON file path
+            self.gc = gspread.service_account(
+                filename="secrets/credentials.json"
+            )
 
         self.spreadsheet = self.gc.open_by_key(self.sheet_id)
 
