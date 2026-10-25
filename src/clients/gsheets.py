@@ -17,11 +17,11 @@ class SheetsClient:
 
         self.spreadsheet = self.gc.open_by_key(self.sheet_id)
 
-    def read_studiobookings_attendances(self):
-        history = self.spreadsheet.worksheet("StudioBookings History")
-        records = history.get_all_records()
+    def read_sheet(self, sheet_name: str):
+        sheet = self.spreadsheet.worksheet(sheet_name)
+        records = sheet.get_all_records()
         if not records:
-            raise ValueError("Missing StudioBookings attendances")
+            raise ValueError("Sheet unexpectedly empty, aborting...")
 
         df = pd.DataFrame(records)
         return df
@@ -31,6 +31,9 @@ class SheetsClient:
             raise PermissionError(f"Protected tab: Cannot overwrite StudioBookings sheet: {sheet_name}.")
         tab = self.spreadsheet.worksheet(sheet_name)
         df = df.fillna("")
+        df = df.astype(str).replace(
+        {"<NA>": "", "NaN": "", "nan": "", "None": "", "null": "", "#N/A": ""}
+    )
         data_matrix = [df.columns.values.tolist()] + df.values.tolist()
         try:
             tab.clear()

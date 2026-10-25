@@ -1,4 +1,5 @@
 import httpx
+import pandas as pd
 from src.config import Config
 
 class TeamUpClient:
@@ -46,7 +47,9 @@ class TeamUpClient:
                     attendances.append({"ID": id, "Customer": name, "Email": email, "Attendances": count})
 
                 next_url = data.get("next")
-        return attendances
+
+        df_attendances = pd.DataFrame(attendances)
+        return df_attendances
 
 if __name__ == "__main__":
      client = TeamUpClient()
