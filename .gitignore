@@ -10,4 +10,23 @@ wheels/
 .venv
 
 .env
+
+# Local .terraform directories (contains large binaries)
+.terraform/
+
+# Hide all state files and state backups
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude variable files containing secret values
+*.tfvars
+*.tfvars.json
+
+# Ignore transient lock files
+.terraform.tfstate.lock.info
+
 secrets/

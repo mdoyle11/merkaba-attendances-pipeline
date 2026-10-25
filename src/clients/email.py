@@ -1,4 +1,5 @@
 # src/clients/email.py
+from datetime import datetime
 import smtplib
 from email.message import EmailMessage
 import pandas as pd
@@ -22,15 +23,20 @@ class EmailClient:
     """Sends an HTML email report with top stats and a direct link to Google Sheets."""
     if not self.sender_email or not self.sender_password:
       logger.warning(
-          "Email credentials not configured (SENDER_EMAIL or APP_PASSWORD"
-          " missing). Skipping email report."
+          "Email credentials not configured. Skipping email report."
       )
       return
 
-    logger.info(f"Preparing pipeline report email for {self.recipient_email}...")
+    # Format current date (e.g., "Oct 26, 2026")
+    today_str = datetime.now().strftime("%b %d, %Y")
+
+    logger.info(
+        f"Preparing pipeline report email for {self.recipient_email}..."
+    )
 
     msg = EmailMessage()
-    msg["Subject"] = "📊 Attendance Leaderboard Weekly Summary"
+    # Dynamic subject with run date
+    msg["Subject"] = f"📊 Attendance Leaderboard Summary — {today_str}"
     msg["From"] = self.sender_email
     msg["To"] = self.recipient_email
 
@@ -60,13 +66,11 @@ class EmailClient:
                 <ul>{items}</ul>
             </div>
             """
-    else:
-      logger.info("No milestone achievements to include in this report.")
 
     html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif;">
-            <h2>TeamUp & StudioBookings Attendance Sync</h2>
+            <h2>Weekly Lifetime Attendance Leaderboard Summary ({today_str})</h2>
             {milestone_html}
             <h3>Top 10 Lifetime Attendance</h3>
             {top_10_html}
@@ -84,4 +88,3 @@ class EmailClient:
       logger.info(f"Email report successfully sent to {self.recipient_email}!")
     except Exception as e:
       logger.error(f"Failed to send pipeline report email: {e}", exc_info=True)
-      # Email failure is non-fatal to allow sheet updates to persist

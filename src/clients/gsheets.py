@@ -38,7 +38,7 @@ class SheetsClient:
       logger.error(f"Failed to read worksheet '{sheet_name}': {err}")
       raise
 
-    if not records:
+    if not records and sheet_name == "StudioBookings History":
       logger.error(f"Sheet '{sheet_name}' is unexpectedly empty.")
       raise ValueError(f"Sheet '{sheet_name}' unexpectedly empty, aborting...")
 
