@@ -3,45 +3,67 @@ import smtplib
 from email.message import EmailMessage
 import pandas as pd
 from src.config import Config
+from src.utils.logger import logger
 
 
 class EmailClient:
-    """Delivers automated pipeline email reports via Gmail SMTP."""
+  """Delivers automated pipeline email reports via Gmail SMTP."""
 
-    def __init__(self):
-        self.sender_email = Config.SENDER_EMAIL
-        self.sender_password = Config.APP_PASSWORD
-        self.recipient_email = Config.RECIPIENT_EMAIL
-        self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 465
+  def __init__(self):
+    self.sender_email = Config.SENDER_EMAIL
+    self.sender_password = Config.APP_PASSWORD
+    self.recipient_email = Config.RECIPIENT_EMAIL
+    self.smtp_server = "smtp.gmail.com"
+    self.smtp_port = 465
 
-    def send_pipeline_report(
-        self, df_lifetime: pd.DataFrame, milestones_achieved: list[dict] = None
-    ) -> None:
-        """Sends an HTML email report with top stats and a direct link to Google Sheets."""
-        msg = EmailMessage()
-        msg["Subject"] = "📊 Attendance Leaderboard Weekly Summary"
-        msg["From"] = self.sender_email
-        msg["To"] = self.recipient_email
+  def send_pipeline_report(
+      self, df_lifetime: pd.DataFrame, milestones_achieved: list[dict] = None
+  ) -> None:
+    """Sends an HTML email report with top stats and a direct link to Google Sheets."""
+    if not self.sender_email or not self.sender_password:
+      logger.warning(
+          "Email credentials not configured (SENDER_EMAIL or APP_PASSWORD"
+          " missing). Skipping email report."
+      )
+      return
 
-        sheet_url = f"https://docs.google.com/spreadsheets/d/{Config.SHEET_ID}"
-        top_10_html = df_lifetime.head(10).to_html(index=False, border=0)
+    logger.info(f"Preparing pipeline report email for {self.recipient_email}...")
 
-# Format milestone section
-        milestone_html = ""
-        if milestones_achieved:
-            items = "".join([
-                f"<li><strong>{m['customer']}</strong> reached <strong>{m['milestone']} classes</strong>! (Previous: {m['previous']} → Current: {m['current']})</li>"
-                for m in milestones_achieved
-            ])
-            milestone_html = f"""
+    msg = EmailMessage()
+    msg["Subject"] = "📊 Attendance Leaderboard Weekly Summary"
+    msg["From"] = self.sender_email
+    msg["To"] = self.recipient_email
+
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{Config.SHEET_ID}"
+    top_10_html = df_lifetime.head(10).to_html(index=False, border=0)
+
+    # Format milestone section
+    milestone_html = ""
+    if milestones_achieved:
+      logger.info(
+          f"Formatting {len(milestones_achieved)} milestone achievements for"
+          " email summary."
+      )
+      items = "".join([
+          (
+              "<li>"
+              f"<strong>{m['customer']}</strong> reached"
+              f" <strong>{m['milestone']} classes</strong>!"
+              f" (Previous: {m['previous']} → Current: {m['current']})"
+              "</li>"
+          )
+          for m in milestones_achieved
+      ])
+      milestone_html = f"""
             <div style="background-color: #f0fdf4; border: 1px solid #22c55e; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                 <h3 style="color: #15803d; margin-top: 0;">🎉 Milestone Achievements</h3>
                 <ul>{items}</ul>
             </div>
             """
+    else:
+      logger.info("No milestone achievements to include in this report.")
 
-        html_content = f"""
+    html_content = f"""
         <html>
           <body style="font-family: Arial, sans-serif;">
             <h2>TeamUp & StudioBookings Attendance Sync</h2>
@@ -53,10 +75,13 @@ class EmailClient:
           </body>
         </html>
         """
-        msg.add_alternative(html_content, subtype="html")
+    msg.add_alternative(html_content, subtype="html")
 
-        with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
-            server.login(self.sender_email, self.sender_password)
-            server.send_message(msg)
-
-        print("[EmailClient] Email report sent successfully!")
+    try:
+      with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+        server.login(self.sender_email, self.sender_password)
+        server.send_message(msg)
+      logger.info(f"Email report successfully sent to {self.recipient_email}!")
+    except Exception as e:
+      logger.error(f"Failed to send pipeline report email: {e}", exc_info=True)
+      # Email failure is non-fatal to allow sheet updates to persist

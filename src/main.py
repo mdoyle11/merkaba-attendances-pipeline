@@ -1,33 +1,86 @@
-import pandas as pd
-from src.config import Config
-from src.clients.teamup import TeamUpClient
-from src.clients.gsheets import SheetsClient
+import sys
 from src.clients.email import EmailClient
+from src.clients.gsheets import SheetsClient
+from src.clients.teamup import TeamUpClient
+from src.config import Config
 from src.transform.leaderboard import build_lifetime_leaderboard
 from src.transform.milestones import check_milestone_crossings
+from src.utils.logger import logger
 
-Config.ensure_token()
-Config.ensure_sheet()
 
-teamup_client = TeamUpClient()
-sheets_client = SheetsClient()
-email_client = EmailClient()
+def run_pipeline() -> None:
+  """Executes the Attendance ETL Pipeline end-to-end."""
+  logger.info("Initializing Attendance ETL pipeline run...")
 
-df_sb = sheets_client.read_sheet(sheet_name="StudioBookings History")
-df_tu = teamup_client.get_attendances()
+  # 1. Configuration & Validation
+  logger.info("Validating configuration tokens and sheet parameters...")
+  Config.ensure_token()
+  Config.ensure_sheet()
 
-df_tu = df_tu.sort_values(by="Attendances", ascending=False)
-sheets_client.overwrite_sheet(sheet_name="TeamUp Attendance", df=df_tu)
+  # 2. Initialize Clients
+  logger.info("Initializing API clients (TeamUp, Google Sheets, Email)...")
+  teamup_client = TeamUpClient()
+  sheets_client = SheetsClient()
+  email_client = EmailClient()
 
-df_old_leaderboard = sheets_client.read_sheet(sheet_name="Lifetime Leaderboard")
-df_old_lifetime = sheets_client.read_sheet(sheet_name="Lifetime Leaderboard")
-# print("[Debug] Old Sheet Head:\n", df_old_lifetime.head(2))
-# print("[Debug] Old Sheet Columns:", list(df_old_lifetime.columns))
-# print("[Debug] Old Sheet Data Types:\n", df_old_lifetime.dtypes)
-df_new_leaderboard = build_lifetime_leaderboard(df_sb=df_sb, df_tu=df_tu)
+  # 3. Extract Data
+  logger.info(
+      "Extracting StudioBookings history from Google Sheets and fetching TeamUp"
+      " attendances..."
+  )
+  df_sb = sheets_client.read_sheet(sheet_name="StudioBookings History")
+  df_tu = teamup_client.get_attendances()
+  logger.info(
+      f"Extracted {len(df_sb)} StudioBookings records and {len(df_tu)} TeamUp"
+      " attendance records."
+  )
 
-milestones_achieved = check_milestone_crossings(df_old=df_old_leaderboard, df_new=df_new_leaderboard)
+  # 4. Process and Overwrite TeamUp Attendance Sheet
+  logger.info("Sorting TeamUp attendance data and updating Google Sheets...")
+  df_tu = df_tu.sort_values(by="Attendances", ascending=False)
+  sheets_client.overwrite_sheet(sheet_name="TeamUp Attendance", df=df_tu)
 
-sheets_client.overwrite_sheet(sheet_name="Lifetime Leaderboard", df=df_new_leaderboard)
+  # 5. Build Leaderboard & Check Milestones
+  logger.info("Reading current Lifetime Leaderboard state for comparison...")
+  df_old_leaderboard = sheets_client.read_sheet(
+      sheet_name="Lifetime Leaderboard"
+  )
 
-email_client.send_pipeline_report(df_lifetime=df_new_leaderboard, milestones_achieved=milestones_achieved)
+  logger.info(
+      "Building new combined Lifetime Leaderboard and checking milestone"
+      " crossings..."
+  )
+  df_new_leaderboard = build_lifetime_leaderboard(df_sb=df_sb, df_tu=df_tu)
+  milestones_achieved = check_milestone_crossings(
+      df_old=df_old_leaderboard, df_new=df_new_leaderboard
+  )
+  logger.info(
+      f"Leaderboard build complete ({len(df_new_leaderboard)} members)."
+      f" Milestones achieved in this run: {len(milestones_achieved)}"
+  )
+
+  # 6. Update Leaderboard Sheet
+  logger.info("Overwriting Lifetime Leaderboard sheet with updated counts...")
+  sheets_client.overwrite_sheet(
+      sheet_name="Lifetime Leaderboard", df=df_new_leaderboard
+  )
+
+  # 7. Send Notifications
+  logger.info("Sending pipeline execution summary email report...")
+  email_client.send_pipeline_report(
+      df_lifetime=df_new_leaderboard, milestones_achieved=milestones_achieved
+  )
+
+  logger.info("Attendance ETL pipeline completed successfully!")
+
+
+if __name__ == "__main__":
+  try:
+    run_pipeline()
+    sys.exit(0)
+  except Exception as e:
+    logger.error(
+        f"ETL Pipeline execution failed due to an unhandled error: {e}",
+        exc_info=True,
+    )
+    sys.exit(1)
