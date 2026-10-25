@@ -11,7 +11,9 @@ class SheetsClient:
   WRITE_SHEETS = {"TeamUp Attendance", "Lifetime Leaderboard"}
 
   def __init__(self, worksheet_id: str = None):
-    self.sheet_id = worksheet_id or Config.SHEET_ID
+    raw_sheet_id = worksheet_id or Config.SHEET_ID
+    # Strip whitespace and newlines immediately
+    self.sheet_id = raw_sheet_id.strip() if raw_sheet_id else None
     creds_json = os.getenv("GSPREAD_CREDENTIALS_JSON")
 
     if creds_json:
@@ -25,7 +27,6 @@ class SheetsClient:
       )
       self.gc = gspread.service_account(filename=local_path)
 
-    logger.info(f"Opening Google Spreadsheet by ID: {self.sheet_id}")
     self.spreadsheet = self.gc.open_by_key(self.sheet_id)
 
   def read_sheet(self, sheet_name: str) -> pd.DataFrame:

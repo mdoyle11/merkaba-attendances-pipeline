@@ -30,3 +30,4 @@ crash.*.log
 .terraform.tfstate.lock.info
 
 secrets/
+scripts/

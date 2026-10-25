@@ -9,8 +9,8 @@ class Config:
   """Centralized configuration and secret validation."""
 
   # API & Sheet Identifiers
-  M2M_TOKEN = os.getenv("M2M_TOKEN")
-  SHEET_ID = os.getenv("SHEET_ID")
+  M2M_TOKEN = os.getenv("M2M_TOKEN").strip()
+  SHEET_ID = os.getenv("SHEET_ID").strip()
 
   # Email / Notification Credentials
   APP_PASSWORD = os.getenv("APP_PASSWORD")
