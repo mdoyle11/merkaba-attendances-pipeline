@@ -18,7 +18,7 @@ class Config:
   RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
   # Attendance Milestones
-  MILESTONES = [25, 50, 75, 100, 150, 200, 250, 500]
+  MILESTONES = [50, 125, 250, 500]
 
   @classmethod
   def ensure_token(cls) -> str:

@@ -18,7 +18,7 @@ class EmailClient:
     self.smtp_port = 465
 
   def send_pipeline_report(
-      self, df_lifetime: pd.DataFrame, milestones_achieved: list[dict] = None
+      self, df_week_attendances: pd.DataFrame, milestones_achieved: list[dict] = None
   ) -> None:
     """Sends an HTML email report with top stats and a direct link to Google Sheets."""
     if not self.sender_email or not self.sender_password:
@@ -41,7 +41,7 @@ class EmailClient:
     msg["To"] = self.recipient_email
 
     sheet_url = f"https://docs.google.com/spreadsheets/d/{Config.SHEET_ID}"
-    top_10_html = df_lifetime.head(10).to_html(index=False, border=0)
+    top_10_html = df_week_attendances.head(10).to_html(index=False, border=0)
 
     # Format milestone section
     milestone_html = ""
@@ -72,7 +72,8 @@ class EmailClient:
           <body style="font-family: Arial, sans-serif;">
             <h2>Weekly Lifetime Attendance Leaderboard Summary ({today_str})</h2>
             {milestone_html}
-            <h3>Top 10 Lifetime Attendance</h3>
+            <p><strong>{len(df_week_attendances)} customers attended this week.</strong></p>
+            <h3>Top 10 Attendances This Week</h3>
             {top_10_html}
             <br>
             <p><a href="{sheet_url}">👉 <strong>Open Master Google Sheet</strong></a></p>

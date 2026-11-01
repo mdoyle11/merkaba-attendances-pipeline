@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timedelta
 from src.clients.email import EmailClient
 from src.clients.gsheets import SheetsClient
 from src.clients.teamup import TeamUpClient
@@ -29,10 +30,21 @@ def run_pipeline() -> None:
       " attendances..."
   )
   df_sb = sheets_client.read_sheet(sheet_name="StudioBookings History")
-  df_tu = teamup_client.get_attendances()
+  df_tu = teamup_client.get_attendances(params=[("columns", "customer"), ("attendance_status[]", "attended")])
+
+  today = datetime.now().date()
+  start_of_week = today - timedelta(days=7)
+  end_of_week = start_of_week + timedelta(days=6)
+  df_week_attendances = teamup_client.get_attendances(params=[
+    ("columns", "customer"),
+    ('attendance_status[]', 'attended'),
+    ("event_start_gte", start_of_week.strftime("%Y-%m-%dT00:00:00Z")),  # Adjust to any date before your business opened
+    ("event_start_lte", end_of_week.strftime("%Y-%m-%dT23:59:59Z"))     # Captures all historical logs up to the future cutoff
+  ])
+  df_week_attendances = df_week_attendances.sort_values(by="Attendances", ascending=False)
   logger.info(
       f"Extracted {len(df_sb)} StudioBookings records and {len(df_tu)} TeamUp"
-      " attendance records."
+      f" attendance records. {len(df_week_attendances)} customers attended this week."
   )
 
   # 4. Process and Overwrite TeamUp Attendance Sheet
@@ -68,7 +80,7 @@ def run_pipeline() -> None:
   # 7. Send Notifications
   logger.info("Sending pipeline execution summary email report...")
   email_client.send_pipeline_report(
-      df_lifetime=df_new_leaderboard, milestones_achieved=milestones_achieved
+      df_week_attendances=df_week_attendances, milestones_achieved=milestones_achieved
   )
 
   logger.info("Attendance ETL pipeline completed successfully!")

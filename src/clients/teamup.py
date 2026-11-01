@@ -14,10 +14,10 @@ class TeamUpClient:
         "Authorization": f"Bearer {self.token}",
     }
 
-  def get_attendances(self) -> pd.DataFrame:
+  def get_attendances(self, params: list[tuple] = [("columns", "customer"), ("attendance_status[]", "attended")]) -> pd.DataFrame:
     """Fetches and paginates through all attended customer counts from TeamUp API."""
     next_url = self.url
-    params = [("columns", "customer"), ("attendance_status[]", "attended")]
+    # params = [("columns", "customer"), ("attendance_status[]", "attended")]
     attendances = []
     page_count = 0
 
