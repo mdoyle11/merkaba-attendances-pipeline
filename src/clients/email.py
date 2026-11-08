@@ -27,18 +27,31 @@ class EmailClient:
       )
       return
 
+    # 1. Parse comma-separated environment variable into a clean list
+    recipients = [
+        addr.strip()
+        for addr in str(self.recipient_email).split(",")
+        if addr.strip()
+    ]
+
+    if not recipients:
+      logger.warning("No recipient email configured. Skipping email report.")
+      return
+
     # Format current date (e.g., "Oct 26, 2026")
     today_str = datetime.now().strftime("%b %d, %Y")
 
     logger.info(
-        f"Preparing pipeline report email for {self.recipient_email}..."
+        f"Preparing pipeline report email for {recipients}..."
     )
 
     msg = EmailMessage()
     # Dynamic subject with run date
     msg["Subject"] = f"📊 Attendance Leaderboard Summary — {today_str}"
     msg["From"] = self.sender_email
-    msg["To"] = self.recipient_email
+    
+    # 2. Join the parsed list back into a clean string for the email UI header
+    msg["To"] = ", ".join(recipients)
 
     sheet_url = f"https://docs.google.com/spreadsheets/d/{Config.SHEET_ID}"
     top_10_html = df_week_attendances.head(10).to_html(index=False, border=0)
@@ -85,7 +98,9 @@ class EmailClient:
     try:
       with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
         server.login(self.sender_email, self.sender_password)
-        server.send_message(msg)
-      logger.info(f"Email report successfully sent to {self.recipient_email}!")
+        
+        server.send_message(msg, to_addrs=recipients)
+        
+      logger.info(f"Email report successfully sent to {recipients}!")
     except Exception as e:
       logger.error(f"Failed to send pipeline report email: {e}", exc_info=True)
